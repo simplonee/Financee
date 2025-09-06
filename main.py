@@ -1,4 +1,6 @@
 from datetime import datetime
+import pandas as pd
+import matplotlib.pyplot as plt
 import sqlite3
 
 def daily():
@@ -68,8 +70,46 @@ def daily():
             income_left = income_all - expense_all
             print(f"\nYou left with ${income_left}")
 
-            m_choice = input("\nClick 'Enter' to do again or 'back' to return: ").lower()
-            if m_choice == "back":
+            m_choice = input("\nClick 'Enter' to do again or 'back' to return, 'chart' for chart: ").lower()
+
+            if m_choice == "chart":
+                try:
+                    df_income = pd.read_sql("SELECT * FROM income_track WHERE entry_date = ?",
+                                            con,
+                                            params = [today]
+                                            )
+                    df_expense = pd.read_sql("SELECT * FROM expense_track WHERE entry_date = ?",
+                                            con,
+                                            params = [today]
+                                            )
+                    
+                    if df_income.empty and df_expense.empty:
+                        print("No data for Plot.")
+                        continue
+                    totals = [df_income["income_value"].sum(), df_expense["expense_value"].sum()]
+                    labels = ["Income", "Expense"]
+
+                    plt.bar(labels, totals)
+                    plt.title("Income vs Expense")
+                    plt.show()
+
+                    expense_by_category = df_expense.groupby("expense_name")["expense_value"].sum()
+                    plt.pie(expense_by_category, labels=expense_by_category.index, autopct="%1.1f%%")
+                    plt.title(f"Expense Breakdown for {today}")
+                    plt.show()
+
+                    starting_income = df_income["income_value"].sum()
+                    df_expense["running_balance"] = starting_income - df_expense["expense_value"].cumsum()
+
+                    plt.plot(df_expense["expense_name"], df_expense["running_balance"], marker="o")
+                    plt.title(f"Balance trand for {today}")
+                    plt.xlabel("Expense #")
+                    plt.ylabel("Remaining Balance ($)")
+                    plt.show()
+                except ValueError:
+                    print("⚠️ Invalid value!")
+
+            elif m_choice == "back":
                 con.close()
                 break    
         except ValueError:
@@ -146,13 +186,54 @@ def monthly():
             income_left = income_all - expense_all
             print(f"\nYou left with ${income_left}")
 
-            m_choise = input("\nClick 'Enter' to do again or 'back' to return: ").lower()
-            if m_choise == "back":
+            m_choice = input("\nClick 'Enter' to do again or type 'back' to return, 'chart' for charts: ").lower()
+
+            if m_choice == "chart":
+                try:
+                    selected_month = input("Plese specify month (YYYY-MM): ")
+                    df_income = pd.read_sql("SELECT * FROM income_monthly WHERE  strftime('%Y-%m', income_date) = ?",
+                                            con,
+                                            params = [selected_month]
+                                            )
+                    df_expense = pd.read_sql("SELECT * FROM expense_monthly WHERE  strftime('%Y-%m', expense_date) = ?",
+                                            con,
+                                            params = [selected_month]
+                                            )
+                    
+                    if df_income.empty and df_expense.empty:
+                        print("No data for Plot.")
+                        continue
+                    totals = [df_income["income_value"].sum(), df_expense["expense_value"].sum()]
+                    labels = ["Income", "Expense"]
+
+                    plt.bar(labels, totals)
+                    plt.title("Income vs Expense")
+                    plt.show()
+
+                    expense_by_category = df_expense.groupby("expense_name")["expense_value"].sum()
+                    plt.pie(expense_by_category, labels=expense_by_category.index, autopct="%1.1f%%")
+                    plt.title(f"Expense Breakdown for {selected_month}")
+                    plt.show()
+
+                    starting_income = df_income["income_value"].sum()
+                    df_expense["running_balance"] = starting_income - df_expense["expense_value"].cumsum()
+
+                    plt.plot(df_expense.index, df_expense["running_balance"], marker="o")
+                    plt.title(f"Balance trend for {selected_month}")
+                    plt.xlabel("Expense #")
+                    plt.ylabel("Remaining Balance ($)")
+                    plt.show()
+                except ValueError:
+                    print("⚠️ Invalid value!")
+
+            elif m_choice == "back":
                 con.close()
                 break    
 
-        except ValueError:
-            print("⚠️ Invalid value!")
+        except Exception as e:
+            print(f"⚠️ Something went wrong: {e}")
+            con.close()
+
 
 def yearly():
     print("Yearly tracker")
@@ -182,7 +263,7 @@ def yearly():
             while True:
                 try:
                     print("*** Income ***")    
-                    income_source = input("\nPlease provide income scourse or leave it blank with space: ")
+                    income_source = input("\nPlease provide income source or leave it blank with space: ")
                     income_value = int(input("Please enter yearly balance: $"))
                     income_date = input("Please enter date of income (YYYY-MM-DD): ")
                     income_date = datetime.strptime(income_date, "%Y-%m-%d").strftime("%Y-%m-%d")
@@ -223,13 +304,53 @@ def yearly():
             income_left = income_all - expense_all
             print(f"\nYou left with ${income_left}")
 
-            m_choise = input("\nClick 'Enter' to do again or 'back' to return: ").lower()
-            if m_choise == "back":
-                con.close()
-                break    
+            m_choice = input("\nClick 'Enter' to do again or type 'back' to return, 'chart' for charts: ").lower()
 
-        except ValueError:
-            print("⚠️ Invalid value!")
+            if m_choice == "chart":
+                try:
+                    selected_year = input("Plese specify Year (YYYY): ")
+                    df_income = pd.read_sql("SELECT * FROM income_yearly WHERE  strftime('%Y', income_date) = ?",
+                                            con,
+                                            params = [selected_year]
+                                            )
+                    df_expense = pd.read_sql("SELECT * FROM expense_yearly WHERE  strftime('%Y', expense_date) = ?",
+                                            con,
+                                            params = [selected_year]
+                                            )
+                    
+                    if df_income.empty and df_expense.empty:
+                        print("No data for Plot.")
+                        continue
+                    totals = [df_income["income_value"].sum(), df_expense["expense_value"].sum()]
+                    labels = ["Income", "Expense"]
+
+                    plt.bar(labels, totals)
+                    plt.title("Income vs Expense")
+                    plt.show()
+
+                    expense_by_category = df_expense.groupby("expense_name")["expense_value"].sum()
+                    plt.pie(expense_by_category, labels=expense_by_category.index, autopct="%1.1f%%")
+                    plt.title(f"Expense Breakdown for {selected_year}")
+                    plt.show()
+
+                    starting_income = df_income["income_value"].sum()
+                    df_expense["running_balance"] = starting_income - df_expense["expense_value"].cumsum()
+
+                    plt.plot(df_expense.index, df_expense["running_balance"], marker="o")
+                    plt.title(f"Balance trend for {selected_year}")
+                    plt.xlabel("Expense #")
+                    plt.ylabel("Remaining Balance ($)")
+                    plt.show()
+                except ValueError:
+                    print("⚠️ Invalid value!")
+
+            elif m_choice == "back":
+                con.close()
+                break        
+
+        except Exception as e:
+            print(f"⚠️ Something went wrong: {e}")
+            con.close()
 
 def main():
     print("-" * 30)
